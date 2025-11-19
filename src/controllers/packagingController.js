@@ -1,8 +1,16 @@
 const Packaging = require('../models/Packaging');
 
 exports.getAllPackaging = async (req, res) => {
-    try { const items = await Packaging.find().sort({ nama_packaging: 'asc' }); res.json(items); }
-    catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    try {
+        const search = req.query.search || '';
+        const query = search ? { nama_packaging: { $regex: search, $options: 'i' } } : {};
+
+        const items = await Packaging.find(query).sort({ nama_packaging: 'asc' });
+        res.json(items);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.createPackaging = async (req, res) => {

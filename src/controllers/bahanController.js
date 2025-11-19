@@ -1,8 +1,17 @@
 const Bahan = require('../models/Bahan');
 
 exports.getAllBahan = async (req, res) => {
-    try { const bahan = await Bahan.find().sort({ nama_bahan: 'asc' }); res.json(bahan); }
-    catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    try {
+        const search = req.query.search || '';
+        // Query filter
+        const query = search ? { nama_bahan: { $regex: search, $options: 'i' } } : {};
+
+        const bahan = await Bahan.find(query).sort({ nama_bahan: 'asc' });
+        res.json(bahan);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.createBahan = async (req, res) => {

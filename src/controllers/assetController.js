@@ -1,8 +1,25 @@
 const Asset = require('../models/Asset');
 
 exports.getAllAssets = async (req, res) => {
-    try { const assets = await Asset.find().sort({ nama_barang: 'asc', kondisi: 'asc' }); res.json(assets); }
-    catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    try {
+        const search = req.query.search || '';
+        // Cari berdasarkan Nama Barang ATAU Kondisi
+        let query = {};
+        if (search) {
+            query = {
+                $or: [
+                    { nama_barang: { $regex: search, $options: 'i' } },
+                    { kondisi: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+
+        const assets = await Asset.find(query).sort({ nama_barang: 'asc' });
+        res.json(assets);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.createAsset = async (req, res) => {
