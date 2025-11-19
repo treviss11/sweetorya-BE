@@ -10,7 +10,12 @@ connectDB();
 const app = express();
 
 // <--- 2. Tambahkan Middleware cors DI SINI (Sebelum route lain)
-app.use(cors()); 
+app.use(cors({
+    // Masukkan link frontend ASLI yang sudah Anda dapat dari Vercel
+    origin: ["https://sweetoryafrontend.vercel.app", "http://localhost:5173"],
+    methods: ["GET", "POST", "PATCH", "DELETE"],
+    credentials: true
+})); 
 // Ini mengizinkan semua frontend untuk mengakses backend ini
 
 // Init Middleware

@@ -2,15 +2,38 @@
 const mongoose = require('mongoose');
 require('dotenv').config({ path: '../../.env' }); // Adjust path if needed when running directly
 
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-  try {
-    mongoose.set('strictQuery', false); // Optional: Prepare for Mongoose 7
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('MongoDB Connected...');
-  } catch (err) {
-    console.error('Error connecting to MongoDB:', err.message);
-    process.exit(1);
+  if (cached.conn) {
+    // Jika sudah ada koneksi aktif, pakai yang lama (hemat waktu)
+    return cached.conn;
   }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false, // PENTING: Jangan buffer request jika belum konek
+    };
+
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+      console.log('MongoDB Connected via Serverless Pattern');
+      return mongoose;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    console.error("MongoDB connection error:", e);
+    throw e;
+  }
+
+  return cached.conn;
 };
 
 module.exports = connectDB;
