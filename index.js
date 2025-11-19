@@ -21,6 +21,16 @@ app.use(cors({
 // Init Middleware
 app.use(express.json({ extended: false }));
 
+app.use(async (req, res, next) => {
+    try {
+        await connectDB(); // Tunggu DB konek di sini
+        next();
+    } catch (error) {
+        console.error("Database connection failed in middleware");
+        res.status(500).json({ error: "Database connection failed" });
+    }
+});
+
 // Simple logger middleware
 app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
