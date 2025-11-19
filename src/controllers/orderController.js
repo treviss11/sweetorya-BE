@@ -6,11 +6,40 @@ exports.getOrders = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
+        const search = req.query.search || ''; // Ambil parameter search
+
         const skip = (page - 1) * limit;
-        const orders = await Order.find().sort({ createdAt: 'asc' }).skip(skip).limit(limit);
-        const totalOrders = await Order.countDocuments();
-        res.json({ orders, currentPage: page, totalPages: Math.ceil(totalOrders / limit), totalOrders });
-    } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+
+        // Logika Query Pencarian
+        let query = {};
+        if (search) {
+            query = {
+                $or: [
+                    { nama_pemesan: { $regex: search, $options: 'i' } }, // i = case insensitive (huruf besar/kecil sama aja)
+                    { nama_penerima: { $regex: search, $options: 'i' } },
+                    { status_pesanan: { $regex: search, $options: 'i' } },
+                    { status_pembayaran: { $regex: search, $options: 'i' } }
+                ]
+            };
+        }
+
+        const orders = await Order.find(query)
+            .sort({ createdAt: 'desc' }) // Saran: Ubah ke 'desc' agar yang terbaru muncul di atas
+            .skip(skip)
+            .limit(limit);
+
+        const totalOrders = await Order.countDocuments(query); // Hitung total sesuai hasil pencarian
+
+        res.json({
+            orders,
+            currentPage: page,
+            totalPages: Math.ceil(totalOrders / limit),
+            totalOrders
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.createOrder = async (req, res) => {
