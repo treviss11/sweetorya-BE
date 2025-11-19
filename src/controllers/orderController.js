@@ -14,14 +14,51 @@ exports.getOrders = async (req, res) => {
 };
 
 exports.createOrder = async (req, res) => {
-    const { nama_pemesan, telp_pemesan, tipe_box, jumlah_box, nama_penerima, telp_penerima, alamat_pengiriman, ucapan_untuk, ucapan_isi, ucapan_dari } = req.body;
+    const { 
+        nama_pemesan, telp_pemesan, 
+        items, // Array item dari frontend
+        nama_penerima, telp_penerima, alamat_pengiriman, 
+        ucapan_untuk, ucapan_isi, ucapan_dari 
+    } = req.body;
+
     try {
-        if (!HARGA_BOX[tipe_box] || !jumlah_box || jumlah_box < 1) return res.status(400).json({ msg: 'Tipe/jumlah box tidak valid' });
-        const harga_total = HARGA_BOX[tipe_box] * jumlah_box;
-        const newOrder = new Order({ nama_pemesan, telp_pemesan, tipe_box, jumlah_box, harga_total, nama_penerima, telp_penerima, alamat_pengiriman, ucapan_untuk, ucapan_isi, ucapan_dari });
+        // Validasi: Items harus ada dan berupa array tidak kosong
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ msg: 'Minimal harus ada satu barang yang dipesan.' });
+        }
+
+        // Hitung ulang total harga di backend untuk keamanan (atau percaya frontend juga boleh)
+        let calculatedTotal = 0;
+        const processedItems = items.map(item => {
+            const subtotal = item.jumlah * item.harga_satuan;
+            calculatedTotal += subtotal;
+            return {
+                nama_varian: item.nama_varian,
+                jumlah: item.jumlah,
+                harga_satuan: item.harga_satuan,
+                subtotal: subtotal
+            };
+        });
+
+        const newOrder = new Order({
+            nama_pemesan,
+            telp_pemesan,
+            items: processedItems, // Simpan array item
+            harga_total: calculatedTotal,
+            nama_penerima,
+            telp_penerima,
+            alamat_pengiriman,
+            ucapan_untuk,
+            ucapan_isi,
+            ucapan_dari
+        });
+
         const order = await newOrder.save();
         res.status(201).json(order);
-    } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.updateOrderStatus = async (req, res) => {
