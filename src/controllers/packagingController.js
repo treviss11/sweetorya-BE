@@ -14,16 +14,35 @@ exports.getAllPackaging = async (req, res) => {
 };
 
 exports.createPackaging = async (req, res) => {
-    const { nama_packaging, stok, satuan, total_harga } = req.body;
+    const { nama_packaging, stok, satuan, total_harga, tgl_beli, supplier } = req.body;
     try {
-        let item = await Packaging.findOne({ nama_packaging });
-        if (item) return res.status(400).json({ msg: 'Packaging sudah ada' });
-        item = new Packaging({ nama_packaging, stok, satuan, modal_dikeluarkan: total_harga });
-        await item.save();
-        res.status(201).json(item);
+        let item = await Packaging.findOne({ 
+            nama_packaging: { $regex: new RegExp(`^${nama_packaging}$`, 'i') } 
+        });
+
+        if (item) {
+            item.stok = parseFloat(item.stok) + parseFloat(stok);
+            item.modal_dikeluarkan = parseFloat(item.modal_dikeluarkan) + parseFloat(total_harga);
+            item.tgl_beli = tgl_beli || new Date();
+            if (supplier) item.supplier = supplier;
+
+            await item.save();
+            return res.status(200).json({ msg: 'Packaging sudah ada. Stok dan Modal ditambahkan.', data: item });
+        } else {
+            item = new Packaging({
+                nama_packaging,
+                stok,
+                satuan,
+                modal_dikeluarkan: total_harga,
+                tgl_beli: tgl_beli || new Date(),
+                supplier: supplier || '-'
+            });
+            await item.save();
+            return res.status(201).json({ msg: 'Packaging baru berhasil ditambahkan.', data: item });
+        }
     } catch (err) {
-        if (err.code === 11000) return res.status(400).json({ msg: 'Nama packaging sudah ada.' });
-        console.error(err.message); res.status(500).send('Server Error');
+        console.error(err.message);
+        res.status(500).send('Server Error');
     }
 };
 
