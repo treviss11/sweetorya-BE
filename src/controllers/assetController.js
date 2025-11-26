@@ -3,32 +3,79 @@ const Asset = require('../models/Asset');
 exports.getAllAssets = async (req, res) => {
     try {
         const search = req.query.search || '';
-        // Cari berdasarkan Nama Barang ATAU Kondisi
         let query = {};
         if (search) {
-            query = {
-                $or: [
-                    { nama_barang: { $regex: search, $options: 'i' } },
-                    { kondisi: { $regex: search, $options: 'i' } }
-                ]
-            };
+            query = { nama_barang: { $regex: search, $options: 'i' } };
         }
-
-        const assets = await Asset.find(query).sort({ nama_barang: 'asc' });
+        // Urutkan berdasarkan tanggal pembelian terbaru
+        const assets = await Asset.find(query).sort({ tgl_pembelian: 'desc' });
         res.json(assets);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server Error');
     }
 };
 
 exports.createAsset = async (req, res) => {
-    const { nama_barang, jumlah, kondisi, total_harga } = req.body;
+    const { nama_barang, jumlah, harga_satuan, tgl_pembelian, kondisi } = req.body;
     try {
-        const asset = new Asset({ nama_barang, jumlah, kondisi, modal_dikeluarkan: total_harga });
+        const existingAsset = await Asset.findOne({ 
+            nama_barang: { $regex: new RegExp(`^${nama_barang}$`, 'i') } 
+        });
+        
+        if (existingAsset) {
+            return res.status(400).json({ msg: `Barang '${nama_barang}' sudah ada. Silakan edit data yang ada.` });
+        }
+
+        const total_harga = jumlah * harga_satuan;
+
+        const asset = new Asset({
+            nama_barang,
+            jumlah,
+            harga_satuan,
+            total_harga,
+            tgl_pembelian: tgl_pembelian || new Date(),
+            kondisi
+        });
+
         await asset.save();
         res.status(201).json(asset);
-    } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(400).json({ msg: 'Nama barang sudah ada.' });
+        }
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.updateAsset = async (req, res) => {
+    const { nama_barang, jumlah, harga_satuan, tgl_pembelian, kondisi } = req.body;
+    
+    try {
+        let asset = await Asset.findById(req.params.id);
+        if (!asset) return res.status(404).json({ msg: 'Asset tidak ditemukan' });
+
+        if (nama_barang && nama_barang !== asset.nama_barang) {
+             const duplicate = await Asset.findOne({ 
+                nama_barang: { $regex: new RegExp(`^${nama_barang}$`, 'i') } 
+            });
+            if (duplicate) return res.status(400).json({ msg: `Nama '${nama_barang}' sudah digunakan barang lain.` });
+        }
+
+        if (nama_barang) asset.nama_barang = nama_barang;
+        if (jumlah) asset.jumlah = jumlah;
+        if (harga_satuan) asset.harga_satuan = harga_satuan;
+        if (tgl_pembelian) asset.tgl_pembelian = tgl_pembelian;
+        if (kondisi) asset.kondisi = kondisi;
+        
+        asset.total_harga = asset.jumlah * asset.harga_satuan;
+
+        await asset.save();
+        res.json(asset);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.updateAssetKondisi = async (req, res) => {
