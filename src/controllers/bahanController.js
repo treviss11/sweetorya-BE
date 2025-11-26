@@ -3,13 +3,10 @@ const Bahan = require('../models/Bahan');
 exports.getAllBahan = async (req, res) => {
     try {
         const search = req.query.search || '';
-        // Query filter
         const query = search ? { nama_bahan: { $regex: search, $options: 'i' } } : {};
-
-        const bahan = await Bahan.find(query).sort({ nama_bahan: 'asc' });
+        const bahan = await Bahan.find(query).sort({ tgl_beli: 'desc', createdAt: 'desc' });
         res.json(bahan);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server Error');
     }
 };
@@ -17,32 +14,17 @@ exports.getAllBahan = async (req, res) => {
 exports.createBahan = async (req, res) => {
     const { nama_bahan, stok, satuan, total_harga, tgl_beli, supplier } = req.body;
     try {
-        let bahan = await Bahan.findOne({ 
-            nama_bahan: { $regex: new RegExp(`^${nama_bahan}$`, 'i') } 
+        const bahan = new Bahan({
+            nama_bahan,
+            stok,
+            satuan,
+            modal_dikeluarkan: total_harga,
+            tgl_beli: tgl_beli || new Date(),
+            supplier: supplier || '-'
         });
 
-        if (bahan) {
-            bahan.stok = parseFloat(bahan.stok) + parseFloat(stok);
-            
-            bahan.modal_dikeluarkan = parseFloat(bahan.modal_dikeluarkan) + parseFloat(total_harga);
-            
-            bahan.tgl_beli = tgl_beli || new Date();
-            if (supplier) bahan.supplier = supplier; 
-            
-            await bahan.save();
-            return res.status(200).json({ msg: 'Barang sudah ada. Stok dan Modal berhasil ditambahkan (Restock).', data: bahan });
-        } else {
-            bahan = new Bahan({
-                nama_bahan,
-                stok,
-                satuan,
-                modal_dikeluarkan: total_harga,
-                tgl_beli: tgl_beli || new Date(),
-                supplier: supplier || '-'
-            });
-            await bahan.save();
-            return res.status(201).json({ msg: 'Bahan baru berhasil ditambahkan.', data: bahan });
-        }
+        await bahan.save();
+        res.status(201).json({ msg: 'Bahan baru berhasil dicatat.', data: bahan });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
