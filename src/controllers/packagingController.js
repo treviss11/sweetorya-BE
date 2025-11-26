@@ -43,3 +43,37 @@ exports.updatePackagingStock = async (req, res) => {
         res.json(item);
     } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
 };
+
+exports.updatePackaging = async (req, res) => {
+    try {
+        const { nama_packaging, stok, satuan, total_harga, tgl_beli, supplier } = req.body;
+        
+        const updatedItem = await Packaging.findByIdAndUpdate(
+            req.params.id,
+            { 
+                nama_packaging, 
+                stok, 
+                satuan, 
+                modal_dikeluarkan: total_harga, 
+                tgl_beli, 
+                supplier 
+            },
+            { new: true }
+        );
+
+        if (!updatedItem) return res.status(404).json({ msg: 'Packaging tidak ditemukan' });
+        res.json(updatedItem);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.deletePackaging = async (req, res) => {
+    try {
+        await Packaging.findByIdAndDelete(req.params.id);
+        res.json({ msg: 'Packaging berhasil dihapus' });
+    } catch (err) {
+        res.status(500).send('Server Error');
+    }
+};

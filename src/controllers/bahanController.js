@@ -42,3 +42,39 @@ exports.updateBahanStock = async (req, res) => {
         res.json(bahan);
     } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
 };
+
+exports.updateBahan = async (req, res) => {
+    try {
+        const { nama_bahan, stok, satuan, total_harga, tgl_beli, supplier } = req.body;
+        
+        const updatedBahan = await Bahan.findByIdAndUpdate(
+            req.params.id,
+            { 
+                nama_bahan, 
+                stok, 
+                satuan, 
+                modal_dikeluarkan: total_harga, 
+                tgl_beli, 
+                supplier 
+            },
+            { new: true }
+        );
+
+        if (!updatedBahan) return res.status(404).json({ msg: 'Bahan tidak ditemukan' });
+        res.json(updatedBahan);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.deleteBahan = async (req, res) => {
+    try {
+        const bahan = await Bahan.findByIdAndDelete(req.params.id);
+        if (!bahan) return res.status(404).json({ msg: 'Bahan tidak ditemukan' });
+        res.json({ msg: 'Bahan berhasil dihapus' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
