@@ -11,11 +11,18 @@ const app = express();
 
 // <--- 2. Tambahkan Middleware cors DI SINI (Sebelum route lain)
 app.use(cors({
-    // Masukkan link frontend ASLI yang sudah Anda dapat dari Vercel
-    origin: ["https://sweetoryafrontend.vercel.app", "http://localhost:5173"],
-    methods: ["GET", "POST", "PATCH", "DELETE"],
+    origin: function (origin, callback) {
+        // Izinkan request tanpa origin (seperti Postman) atau jika origin ada di list
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
     credentials: true
-})); 
+}));
 // Ini mengizinkan semua frontend untuk mengakses backend ini
 
 // Init Middleware
