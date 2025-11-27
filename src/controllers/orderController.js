@@ -1,21 +1,17 @@
 const Order = require('../models/Order');
 
-const HARGA_BOX = { '6pcs': 37800, '9pcs': 55800 };
-
 exports.getOrders = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
-        const search = req.query.search || ''; // Ambil parameter search
+        const search = req.query.search || '';
 
         const skip = (page - 1) * limit;
-
-        // Logika Query Pencarian
         let query = {};
         if (search) {
             query = {
                 $or: [
-                    { nama_pemesan: { $regex: search, $options: 'i' } }, // i = case insensitive (huruf besar/kecil sama aja)
+                    { nama_pemesan: { $regex: search, $options: 'i' } },
                     { nama_penerima: { $regex: search, $options: 'i' } },
                     { status_pesanan: { $regex: search, $options: 'i' } },
                     { status_pembayaran: { $regex: search, $options: 'i' } }
@@ -24,11 +20,11 @@ exports.getOrders = async (req, res) => {
         }
 
         const orders = await Order.find(query)
-            .sort({ createdAt: 'desc' }) // Saran: Ubah ke 'desc' agar yang terbaru muncul di atas
+            .sort({ createdAt: 'desc' })
             .skip(skip)
             .limit(limit);
 
-        const totalOrders = await Order.countDocuments(query); // Hitung total sesuai hasil pencarian
+        const totalOrders = await Order.countDocuments(query); 
 
         res.json({
             orders,
@@ -44,48 +40,118 @@ exports.getOrders = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
     const { 
-        nama_pemesan, telp_pemesan, 
-        items, // Array item dari frontend
+        nama_pemesan, telp_pemesan, items, 
         nama_penerima, telp_penerima, alamat_pengiriman, 
-        ucapan_untuk, ucapan_isi, ucapan_dari 
+        ucapan_untuk, ucapan_isi, ucapan_dari,
+        tgl_pesan, tgl_kirim, jam_kirim, catatan 
     } = req.body;
 
     try {
-        // Validasi: Items harus ada dan berupa array tidak kosong
         if (!items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ msg: 'Minimal harus ada satu barang yang dipesan.' });
+            return res.status(400).json({ msg: 'Minimal harus ada satu barang.' });
         }
 
-        // Hitung ulang total harga di backend untuk keamanan (atau percaya frontend juga boleh)
         let calculatedTotal = 0;
         const processedItems = items.map(item => {
             const subtotal = item.jumlah * item.harga_satuan;
             calculatedTotal += subtotal;
-            return {
-                nama_varian: item.nama_varian,
-                jumlah: item.jumlah,
-                harga_satuan: item.harga_satuan,
-                subtotal: subtotal
-            };
+            return { ...item, subtotal };
         });
 
         const newOrder = new Order({
-            nama_pemesan,
-            telp_pemesan,
-            items: processedItems, // Simpan array item
-            harga_total: calculatedTotal,
-            nama_penerima,
-            telp_penerima,
-            alamat_pengiriman,
-            ucapan_untuk,
-            ucapan_isi,
-            ucapan_dari
+            nama_pemesan, telp_pemesan, items: processedItems, harga_total: calculatedTotal,
+            nama_penerima, telp_penerima, alamat_pengiriman,
+            ucapan_untuk, ucapan_isi, ucapan_dari,
+            tgl_pesan: tgl_pesan || new Date(), 
+            tgl_kirim, jam_kirim, catatan
         });
 
         const order = await newOrder.save();
         res.status(201).json(order);
     } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.getOrderById = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ msg: 'Pesanan tidak ditemukan' });
+        res.json(order);
+    } catch (err) {
         console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.updateOrder = async (req, res) => {
+    const { 
+        nama_pemesan, telp_pemesan, items, 
+        nama_penerima, telp_penerima, alamat_pengiriman, 
+        ucapan_untuk, ucapan_isi, ucapan_dari,
+        tgl_pesan, tgl_kirim, jam_kirim, catatan,
+        status_pesanan, status_pembayaran
+    } = req.body;
+
+    try {
+        let calculatedTotal = 0;
+        let processedItems = [];
+        
+        if (items && items.length > 0) {
+            processedItems = items.map(item => {
+                const subtotal = item.jumlah * item.harga_satuan;
+                calculatedTotal += subtotal;
+                return { ...item, subtotal };
+            });
+        }
+
+        const updateData = {
+            nama_pemesan, telp_pemesan, 
+            items: processedItems, 
+            harga_total: calculatedTotal,
+            nama_penerima, telp_penerima, alamat_pengiriman,
+            ucapan_untuk, ucapan_isi, ucapan_dari,
+            tgl_pesan, tgl_kirim, jam_kirim, catatan,
+            status_pesanan, status_pembayaran
+        };
+
+        const order = await Order.findByIdAndUpdate(
+            req.params.id, 
+            { $set: updateData }, 
+            { new: true }
+        );
+
+        if (!order) return res.status(404).json({ msg: 'Pesanan tidak ditemukan' });
+        res.json(order);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.deleteOrder = async (req, res) => {
+    try {
+        const order = await Order.findByIdAndDelete(req.params.id);
+        if (!order) return res.status(404).json({ msg: 'Pesanan tidak ditemukan' });
+        res.json({ msg: 'Pesanan berhasil dihapus' });
+    } catch (err) {
+        res.status(500).send('Server Error');
+    }
+};
+
+exports.getSuggestions = async (req, res) => {
+    try {
+        const customers = await Order.aggregate([
+            { $group: { _id: { nama: "$nama_pemesan", telp: "$telp_pemesan" } } },
+            { $project: { nama: "$_id.nama", telp: "$_id.telp", _id: 0 } }
+        ]);
+
+        const variants = await Order.distinct("items.nama_varian");
+
+        res.json({ customers, variants });
+    } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 };
