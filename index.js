@@ -51,7 +51,7 @@ app.use('/api/bahan', require('./src/routes/bahanRoutes'));
 app.use('/api/packaging', require('./src/routes/packagingRoutes'));
 app.use('/api/inventaris', require('./src/routes/assetRoutes'));
 app.use('/api/reports', require('./src/routes/reportRoutes'));
-app.use('/api/auth', require('./src/routes/authRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 
 const PORT = process.env.PORT || 5001;
 
