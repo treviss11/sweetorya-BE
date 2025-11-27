@@ -9,6 +9,11 @@ connectDB();
 
 const app = express();
 
+const allowedOrigins = [
+    "https://sweetoryafrontend.vercel.app", // Link Frontend Vercel Anda
+    "http://localhost:5173"                 // Link Localhost (untuk testing di laptop)
+];
+
 // <--- 2. Tambahkan Middleware cors DI SINI (Sebelum route lain)
 app.use(cors({
     origin: function (origin, callback) {
