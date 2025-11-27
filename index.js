@@ -30,7 +30,7 @@ app.use(express.json({ extended: false }));
 
 app.use(async (req, res, next) => {
     try {
-        await connectDB(); // Tunggu DB konek di sini
+        await connectDB(); 
         next();
     } catch (error) {
         console.error("Database connection failed in middleware");
