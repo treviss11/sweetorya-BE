@@ -16,7 +16,8 @@ exports.createBahan = async (req, res) => {
     try {
         const bahan = new Bahan({
             nama_bahan,
-            stok,
+            stok_awal: stok, 
+            stok_sisa: stok, 
             satuan,
             modal_dikeluarkan: total_harga,
             tgl_beli: tgl_beli || new Date(),
@@ -30,17 +31,29 @@ exports.createBahan = async (req, res) => {
         res.status(500).send('Server Error');
     }
 };
+
 exports.updateBahanStock = async (req, res) => {
     const { jumlah_keluar } = req.body;
+    const bahanId = req.params.id;
+
     try {
-        let bahan = await Bahan.findById(req.params.id);
+        let bahan = await Bahan.findById(bahanId);
         if (!bahan) return res.status(404).json({ msg: 'Bahan tidak ditemukan' });
-        if (jumlah_keluar > bahan.stok) return res.status(400).json({ msg: `Stok tidak cukup. Sisa: ${bahan.stok}` });
-        if (jumlah_keluar < 0) return res.status(400).json({ msg: `Jumlah keluar tidak boleh negatif.` });
-        bahan.stok -= jumlah_keluar;
+
+        if (jumlah_keluar > bahan.stok_sisa) {
+             return res.status(400).json({ msg: `Stok sisa tidak mencukupi. Sisa: ${bahan.stok_sisa}` });
+        }
+        if (jumlah_keluar < 0) {
+            return res.status(400).json({ msg: `Jumlah keluar tidak boleh negatif.` });
+        }
+
+        bahan.stok_sisa -= jumlah_keluar;
+
         await bahan.save();
         res.json(bahan);
-    } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+    } catch (err) {
+        res.status(500).send('Server Error');
+    }
 };
 
 exports.updateBahan = async (req, res) => {
@@ -51,7 +64,8 @@ exports.updateBahan = async (req, res) => {
             req.params.id,
             { 
                 nama_bahan, 
-                stok, 
+                stok_awal: stok, 
+                stok_sisa: stok, 
                 satuan, 
                 modal_dikeluarkan: total_harga, 
                 tgl_beli, 
@@ -63,7 +77,6 @@ exports.updateBahan = async (req, res) => {
         if (!updatedBahan) return res.status(404).json({ msg: 'Bahan tidak ditemukan' });
         res.json(updatedBahan);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Server Error');
     }
 };
