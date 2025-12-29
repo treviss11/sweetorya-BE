@@ -181,18 +181,46 @@ exports.updateTestimonial = async (req, res) => {
 
 exports.getSummary = async (req, res) => {
     try {
-        const Bahan = require('../models/Bahan'); const Packaging = require('../models/Packaging'); const Asset = require('../models/Asset');
-        const pResult = await Order.aggregate([{ $match: { status_pembayaran: 'Lunas' } }, { $group: { _id: null, total: { $sum: '$harga_total' } } }]);
+        const Bahan = require('../models/Bahan');
+        const Packaging = require('../models/Packaging');
+        const Asset = require('../models/Asset'); 
+
+        const pResult = await Order.aggregate([
+            { $match: { status_pesanan: 'Selesai', status_pembayaran: 'Lunas' } }, 
+            { $group: { _id: null, total: { $sum: '$harga_total' } } }
+        ]);
+
         const bResult = await Bahan.aggregate([{ $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }]);
         const pkgResult = await Packaging.aggregate([{ $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }]);
-        const aResult = await Asset.aggregate([{ $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }]);
+        const aResult = await Asset.aggregate([{ 
+            $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } 
+        }]);
+
         const total_pendapatan = pResult.length > 0 ? pResult[0].total : 0;
         const total_modal_bahan = bResult.length > 0 ? bResult[0].total : 0;
         const total_modal_packaging = pkgResult.length > 0 ? pkgResult[0].total : 0;
         const total_modal_aset = aResult.length > 0 ? aResult[0].total : 0;
-        const total_pengeluaran = total_modal_bahan + total_modal_packaging;
+
+        const total_pengeluaran = total_modal_bahan + total_modal_packaging + total_modal_aset;
+
         const keuntungan_bersih = total_pendapatan - total_pengeluaran;
+
         const jumlah_pesanan_selesai = await Order.countDocuments({ status_pesanan: 'Selesai' });
-        res.json({ total_pendapatan, total_pengeluaran, keuntungan_bersih, jumlah_pesanan_selesai, total_modal_bahan, total_modal_packaging, total_modal_aset });
-    } catch (err) { console.error(err.message); res.status(500).send('Server Error'); }
+
+        res.json({
+            total_pendapatan,
+            total_pengeluaran,
+            keuntungan_bersih,
+            jumlah_pesanan_selesai,
+            pengeluaran: {
+                bahan: total_modal_bahan,
+                packaging: total_modal_packaging,
+                aset: total_modal_aset
+            }
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 };
