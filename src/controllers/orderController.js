@@ -193,7 +193,7 @@ exports.getSummary = async (req, res) => {
         const bResult = await Bahan.aggregate([{ $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }]);
         const pkgResult = await Packaging.aggregate([{ $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }]);
         const aResult = await Asset.aggregate([{ 
-            $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } 
+            $group: { _id: null, total: { $sum: '$total_harga' } } 
         }]);
 
         const total_pendapatan = pResult.length > 0 ? pResult[0].total : 0;
@@ -206,6 +206,8 @@ exports.getSummary = async (req, res) => {
         const keuntungan_bersih = total_pendapatan - total_pengeluaran;
 
         const jumlah_pesanan_selesai = await Order.countDocuments({ status_pesanan: 'Selesai' });
+        console.log(total_modal_aset);
+        
 
         res.json({
             total_pendapatan,
