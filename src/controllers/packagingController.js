@@ -4,7 +4,7 @@ exports.getAllPackaging = async (req, res) => {
     try {
         const search = req.query.search || '';
         const query = search ? { nama_packaging: { $regex: search, $options: 'i' } } : {};
-        const items = await Packaging.find(query).sort({ tgl_beli: 'desc', createdAt: 'desc' });
+        const items = await Packaging.find(query).sort({ stok_sisa: -1 });
         res.json(items);
     } catch (err) {
         res.status(500).send('Server Error');

@@ -8,7 +8,7 @@ exports.getAllAssets = async (req, res) => {
             query = { nama_barang: { $regex: search, $options: 'i' } };
         }
         // Urutkan berdasarkan tanggal pembelian terbaru
-        const assets = await Asset.find(query).sort({ tgl_pembelian: 'desc' });
+        const assets = await Asset.find(query).sort({ kondisi: 1, nama_barang: 1 });
         res.json(assets);
     } catch (err) {
         res.status(500).send('Server Error');

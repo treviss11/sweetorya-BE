@@ -4,7 +4,7 @@ exports.getAllBahan = async (req, res) => {
     try {
         const search = req.query.search || '';
         const query = search ? { nama_bahan: { $regex: search, $options: 'i' } } : {};
-        const bahan = await Bahan.find(query).sort({ tgl_beli: 'desc', createdAt: 'desc' });
+        const bahan = await Bahan.find(query).sort({ stok_sisa: -1 });
         res.json(bahan);
     } catch (err) {
         res.status(500).send('Server Error');
