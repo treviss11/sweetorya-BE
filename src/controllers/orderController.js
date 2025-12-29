@@ -201,7 +201,7 @@ exports.getSummary = async (req, res) => {
         const total_modal_packaging = pkgResult.length > 0 ? pkgResult[0].total : 0;
         const total_modal_aset = aResult.length > 0 ? aResult[0].total : 0;
 
-        const total_pengeluaran = total_modal_bahan + total_modal_packaging + total_modal_aset;
+        const total_pengeluaran = total_modal_bahan + total_modal_packaging;
 
         const keuntungan_bersih = total_pendapatan - total_pengeluaran;
 
