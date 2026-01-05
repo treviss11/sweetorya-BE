@@ -186,7 +186,7 @@ exports.getSummary = async (req, res) => {
         const Asset = require('../models/Asset'); 
 
         const pResult = await Order.aggregate([
-            { $match: { status_pesanan: 'Selesai', status_pembayaran: 'Lunas' } }, 
+            { $match: { status_pembayaran: 'Lunas' } }, 
             { $group: { _id: null, total: { $sum: '$harga_total' } } }
         ]);
 

@@ -3,10 +3,29 @@ const Packaging = require('../models/Packaging');
 exports.getAllPackaging = async (req, res) => {
     try {
         const search = req.query.search || '';
-        const query = search ? { nama_packaging: { $regex: search, $options: 'i' } } : {};
-        const items = await Packaging.find(query).sort({ stok_sisa: -1 });
+
+        const pipeline = [
+            {
+                $match: search ? { nama_packaging: { $regex: search, $options: 'i' } } : {}
+            },
+            {
+                $addFields: {
+                    isAvailable: { $gt: ["$stok_sisa", 0] }
+                }
+            },
+            {
+                $sort: {
+                    isAvailable: -1,  
+                    tgl_beli: -1,       
+                    createdAt: -1
+                }
+            }
+        ];
+
+        const items = await Packaging.aggregate(pipeline);
         res.json(items);
     } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 };

@@ -3,14 +3,38 @@ const Asset = require('../models/Asset');
 exports.getAllAssets = async (req, res) => {
     try {
         const search = req.query.search || '';
-        let query = {};
-        if (search) {
-            query = { nama_barang: { $regex: search, $options: 'i' } };
-        }
-        // Urutkan berdasarkan tanggal pembelian terbaru
-        const assets = await Asset.find(query).sort({ kondisi: 1, nama_barang: 1 });
+        const pipeline = [
+            {
+                $match: search ? { nama_barang: { $regex: search, $options: 'i' } } : {}
+            },
+            {
+                $addFields: {
+                    priorityScore: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ["$kondisi", "Baik"] }, then: 3 },
+                                { case: { $eq: ["$kondisi", "Perlu Perbaikan"] }, then: 2 },
+                                { case: { $eq: ["$kondisi", "Rusak"] }, then: 1 },
+                                { case: { $eq: ["$kondisi", "Hilang"] }, then: 0 }
+                            ],
+                            default: 1
+                        }
+                    }
+                }
+            },
+            {
+                $sort: {
+                    priorityScore: -1,  
+                    tgl_beli: -1,       
+                    createdAt: -1
+                }
+            }
+        ];
+
+        const assets = await Asset.aggregate(pipeline);
         res.json(assets);
     } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 };

@@ -3,10 +3,28 @@ const Bahan = require('../models/Bahan');
 exports.getAllBahan = async (req, res) => {
     try {
         const search = req.query.search || '';
-        const query = search ? { nama_bahan: { $regex: search, $options: 'i' } } : {};
-        const bahan = await Bahan.find(query).sort({ stok_sisa: -1 });
+        const pipeline = [
+            {
+                $match: search ? { nama_bahan: { $regex: search, $options: 'i' } } : {}
+            },
+            {
+                $addFields: {
+                    isAvailable: { $gt: ["$stok_sisa", 0] }
+                }
+            },
+            {
+                $sort: {
+                    isAvailable: -1,    
+                    tgl_beli: -1,       
+                    createdAt: -1       
+                }
+            }
+        ];
+
+        const bahan = await Bahan.aggregate(pipeline);
         res.json(bahan);
     } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 };
