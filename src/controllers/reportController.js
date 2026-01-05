@@ -147,3 +147,85 @@ exports.downloadFullReport = async (req, res) => {
         res.status(500).send('Gagal generate laporan Excel');
     }
 };
+
+exports.getMonthlyProfit = async (req, res) => {
+    try {
+        // Ambil query dari frontend (contoh: ?month=11&year=2025)
+        // Note: month di frontend biasanya 1-12, di Javascript Date 0-11.
+        const { month, year } = req.query;
+
+        if (!month || !year) {
+            return res.status(400).json({ msg: "Mohon sertakan bulan dan tahun." });
+        }
+
+        // Tentukan Range Tanggal (Awal Bulan s/d Akhir Bulan)
+        const startDate = new Date(year, month - 1, 1); // Tgl 1
+        const endDate = new Date(year, month, 0, 23, 59, 59); // Tgl Terakhir bulan tersebut
+
+        // 1. Hitung PENDAPATAN BULANAN (Hanya yang Lunas di bulan tersebut)
+        // Kita filter berdasarkan 'createdAt' atau 'tgl_pesan'. Mari gunakan 'tgl_pesan'.
+        const pResult = await Order.aggregate([
+            { 
+                $match: { 
+                    status_pembayaran: 'Lunas',
+                    tgl_pesan: { $gte: startDate, $lte: endDate } // <--- Filter Tanggal
+                } 
+            },
+            { $group: { _id: null, total: { $sum: '$harga_total' } } }
+        ]);
+
+        // 2. Hitung Pengeluaran BAHAN (Beli di bulan tersebut)
+        const bResult = await Bahan.aggregate([
+            { 
+                $match: { 
+                    tgl_beli: { $gte: startDate, $lte: endDate } 
+                } 
+            },
+            { $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }
+        ]);
+
+        // 3. Hitung Pengeluaran PACKAGING (Beli di bulan tersebut)
+        const pkgResult = await Packaging.aggregate([
+            { 
+                $match: { 
+                    tgl_beli: { $gte: startDate, $lte: endDate } 
+                } 
+            },
+            { $group: { _id: null, total: { $sum: '$modal_dikeluarkan' } } }
+        ]);
+
+        // 4. Hitung Pengeluaran ASET (Beli di bulan tersebut)
+        // Pastikan field harga sesuai database ('total_harga' / 'modal_dikeluarkan')
+        const aResult = await Asset.aggregate([
+            { 
+                $match: { 
+                    tgl_beli: { $gte: startDate, $lte: endDate } 
+                } 
+            },
+            { $group: { _id: null, total: { $sum: '$total_harga' } } } // Sesuaikan field harga aset
+        ]);
+
+        // --- HITUNG HASIL AKHIR ---
+        const pendapatan = pResult.length > 0 ? pResult[0].total : 0;
+        const bahan = bResult.length > 0 ? bResult[0].total : 0;
+        const packaging = pkgResult.length > 0 ? pkgResult[0].total : 0;
+        const aset = aResult.length > 0 ? aResult[0].total : 0;
+
+        const pengeluaran = bahan + packaging + aset;
+        const profit = pendapatan - pengeluaran;
+
+        res.json({
+            periode: { month, year },
+            pendapatan,
+            pengeluaran: {
+                total: pengeluaran,
+                rincian: { bahan, packaging, aset }
+            },
+            profit_bersih: profit
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+};
